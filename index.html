@@ -356,12 +356,13 @@
       btn.disabled = true;
 
       try {
-        // 使用公開且穩定的 Frankfurter 匯率 API (以 USD 為基底)
-        const response = await fetch('https://api.frankfurter.app/latest?from=USD&to=TWD,CNY,JPY,KRW');
+        // 使用支援完整 CORS 的 Open Exchange Rates 免費端點 (以 USD 為基準)
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
         if (!response.ok) throw new Error('網路請求失敗');
         const data = await response.json();
 
-        // 換算成對 TWD 的匯率
+        if (data.result !== 'success') throw new Error('匯率資料獲取異常');
+
         const rates = data.rates;
         const usdToTwd = rates.TWD; // 1 USD = 多少 TWD
         const cnyToTwd = usdToTwd / rates.CNY;
@@ -379,7 +380,7 @@
         showToast('即時匯率更新成功！');
       } catch (error) {
         console.error(error);
-        showToast('更新失敗，請檢查網路連線');
+        showToast('更新失敗，請檢查網路連線或阻擋設定');
       } finally {
         btn.textContent = originalText;
         btn.disabled = false;
