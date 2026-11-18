@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>多平台購物比價計算機</title>
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Inter 字體作為輔助 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* iOS 系統字體與觸控體驗設定 */
+    * {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 隱藏 number input 預設上下箭頭，讓手機與電腦畫面更乾淨 */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    /* 防止 iOS Safari 點擊輸入框時自動放大畫面 */
+    @media screen and (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+      .curr-select {
+        font-size: 14px !important;
+      }
+      .cc-rate-input {
+        font-size: 14px !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-[#F2F2F7] text-[#1C1C1E] min-h-screen p-3 sm:p-5 pb-16 select-none">
+
+  <div class="max-w-lg mx-auto">
+    <!-- 1. 頂部標題區 -->
+    <header class="text-center pt-2 pb-4">
+      <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1C1C1E] flex items-center justify-center gap-2">
+        <span>🛒</span>
+        <span>多平台購物比價計算機</span>
+      </h1>
+      <p class="text-xs sm:text-sm text-[#8E8E93] mt-1 font-medium">
+        多幣別換算 • 手續費連動 • 一鍵秒比價
+      </p>
+    </header>
+
+    <!-- 2. 匯率設定區 (兌台幣 TWD) -->
+    <section class="bg-white rounded-2xl p-3.5 sm:p-4 mb-4 shadow-sm border border-black/[0.04]">
+      <div class="flex items-center justify-between mb-2.5">
+        <h2 class="text-sm sm:text-base font-semibold text-[#1C1C1E] flex items-center gap-1.5">
+          <span>💱</span>
+          <span>匯率設定 (兌台幣 TWD)</span>
+        </h2>
+        <span class="text-[11px] sm:text-xs text-[#8E8E93]">即時匯率 僅供參考</span>
+      </div>
+
+      <!-- 手機 2x2 網格、電腦 4 欄 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <!-- 美金 USD -->
+        <div class="bg-[#F8F8FA] rounded-xl px-3 py-2 border border-[#E5E5EA] focus-within:border-[#007AFF] focus-within:bg-white transition-colors">
+          <label for="rate-USD" class="block text-[11px] font-semibold text-[#8E8E93] mb-0.5">🇺🇸 美金 USD</label>
+          <input type="text" id="rate-USD" value="32.50" inputmode="decimal"
+                 class="w-full bg-transparent text-base font-bold text-[#007AFF] outline-none"
+                 oninput="sanitizeDecimalInput(this); calculateAll();">
+        </div>
+
+        <!-- 人民幣 CNY -->
+        <div class="bg-[#F8F8FA] rounded-xl px-3 py-2 border border-[#E5E5EA] focus-within:border-[#007AFF] focus-within:bg-white transition-colors">
+          <label for="rate-CNY" class="block text-[11px] font-semibold text-[#8E8E93] mb-0.5">🇨🇳 人民幣 CNY</label>
+          <input type="text" id="rate-CNY" value="4.48" inputmode="decimal"
+                 class="w-full bg-transparent text-base font-bold text-[#007AFF] outline-none"
+                 oninput="sanitizeDecimalInput(this); calculateAll();">
+        </div>
+
+        <!-- 日幣 JPY -->
+        <div class="bg-[#F8F8FA] rounded-xl px-3 py-2 border border-[#E5E5EA] focus-within:border-[#007AFF] focus-within:bg-white transition-colors">
+          <label for="rate-JPY" class="block text-[11px] font-semibold text-[#8E8E93] mb-0.5">🇯🇵 日幣 JPY</label>
+          <input type="text" id="rate-JPY" value="0.212" inputmode="decimal"
+                 class="w-full bg-transparent text-base font-bold text-[#007AFF] outline-none"
+                 oninput="sanitizeDecimalInput(this); calculateAll();">
+        </div>
+
+        <!-- 韓幣 KRW -->
+        <div class="bg-[#F8F8FA] rounded-xl px-3 py-2 border border-[#E5E5EA] focus-within:border-[#007AFF] focus-within:bg-white transition-colors">
+          <label for="rate-KRW" class="block text-[11px] font-semibold text-[#8E8E93] mb-0.5">🇰🇷 韓幣 KRW</label>
+          <input type="text" id="rate-KRW" value="0.0235" inputmode="decimal"
+                 class="w-full bg-transparent text-base font-bold text-[#007AFF] outline-none"
+                 oninput="sanitizeDecimalInput(this); calculateAll();">
+        </div>
+      </div>
+    </section>
+
+    <!-- 提示訊息條 (取代 alert) -->
+    <div id="toast-msg" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#1C1C1E]/90 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-full shadow-lg backdrop-blur-md transition-opacity">
+      至少需要保留一個比較平台喔！
+    </div>
+
+    <!-- 3. 平台比較卡片列表（一律單欄垂直排列，維持 iPhone 卡片閱讀比例） -->
+    <main id="cards-container" class="flex flex-col gap-3.5 mb-6">
+      <!-- 卡片將由 JS 動態生成 -->
+    </main>
+
+    <!-- 新增比較平台按鈕 -->
+    <div class="text-center">
+      <button type="button" onclick="addCard()"
+              class="w-full bg-[#007AFF] hover:bg-[#0062CC] active:scale-[0.98] text-white font-semibold text-base py-3.5 px-6 rounded-2xl shadow-md shadow-[#007AFF]/25 transition-all cursor-pointer">
+        ＋ 新增比較平台
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 平台與幣別常數設定
+    const PLATFORMS = [
+      '淘寶',
+      '拼多多',
+      '天貓',
+      '蝦皮購物',
+      'Coupang 酷澎',
+      'Momo購物網',
+      'PChome 24h',
+      'Amazon (亞馬遜)',
+      '日本樂天 / Mercari',
+      '其他',
+    ];
+    const CURRENCIES = ['TWD', 'CNY', 'USD','JPY', 'KRW'];
+
+    let cardCounter = 0;
+    let toastTimeout = null;
+
+    /**
+     * 顯示 iOS 風格輕量提示訊息（不使用 alert）
+     */
+    function showToast(message) {
+      const toast = document.getElementById('toast-msg');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2200);
+    }
+
+    /**
+     * 嚴格過濾非數字輸入，僅允許數字與單一小數點
+     */
+    function sanitizeDecimalInput(inputEl) {
+      let val = inputEl.value;
+      // 移除非數字與非小數點的字元
+      val = val.replace(/[^0-9.]/g, '');
+      // 確保只有一個小數點
+      const parts = val.split('.');
+      if (parts.length > 2) {
+        val = parts[0] + '.' + parts.slice(1).join('');
+      }
+      inputEl.value = val;
+    }
+
+    /**
+     * 生成幣別下拉選單 HTML
+     */
+    function createCurrencySelect(className, defaultCurr = 'TWD') {
+      const options = CURRENCIES.map(
+        c => `<option value="${c}" ${c === defaultCurr ? 'selected' : ''}>${c}</option>`
+      ).join('');
+      return `<select class="curr-select ${className} bg-[#F2F2F7] border-r border-[#D1D1D6] px-2.5 py-2 text-xs sm:text-sm font-semibold text-[#1C1C1E] outline-none shrink-0 cursor-pointer" onchange="calculateAll()">${options}</select>`;
+    }
+
+    /**
+     * 新增一張平台比較卡片
+     */
+    function addCard(defaultPlatform = '蝦皮購物', defaultCurr = 'TWD') {
+      cardCounter++;
+      const container = document.getElementById('cards-container');
+      const card = document.createElement('div');
+      card.className = 'card relative bg-white rounded-2xl p-4 shadow-sm border-2 border-transparent transition-all duration-200';
+      card.id = `card-${cardCounter}`;
+
+      const platformOptions = PLATFORMS.map(
+        p => `<option value="${p}" ${p === defaultPlatform ? 'selected' : ''}>${p}</option>`
+      ).join('');
+
+      card.innerHTML = `
+        <!-- 最划算標籤 -->
+        <div class="cheapest-badge hidden absolute -top-2.5 right-4 bg-[#34C759] text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
+          最划算
+        </div>
+
+        <!-- 卡片頂部：1. 平台選擇與刪除 -->
+        <div class="flex items-center gap-2 pb-3 mb-3.5 border-b border-[#F2F2F7]">
+          <select class="platform-select flex-1 min-w-0 bg-[#F8F8FA] border border-[#D1D1D6] rounded-xl px-3 py-2 text-sm sm:text-base font-semibold text-[#1C1C1E] outline-none focus:border-[#007AFF] cursor-pointer"
+                  onchange="handlePlatformChange(this)">
+            ${platformOptions}
+          </select>
+          <input type="text" class="custom-platform hidden flex-1 min-w-0 bg-white border border-[#007AFF] rounded-xl px-3 py-2 text-sm sm:text-base text-[#1C1C1E] outline-none"
+                 placeholder="輸入平台名稱">
+          <button type="button" onclick="removeCard('${card.id}')" title="刪除此卡片"
+                  class="bg-[#FFF2F2] hover:bg-[#FFE1E1] active:scale-95 text-[#FF3B30] font-bold rounded-xl px-3 py-2 text-sm transition-all shrink-0 cursor-pointer">
+            ✕
+          </button>
+        </div>
+
+        <!-- 費用項目列表 -->
+        <div class="space-y-2.5">
+          <!-- 2. 商品價格 -->
+          <div class="flex items-center justify-between gap-2">
+            <span class="w-24 sm:w-28 text-xs sm:text-sm font-medium text-[#1C1C1E] shrink-0">商品價格</span>
+            <div class="flex flex-1 min-w-0 border border-[#D1D1D6] rounded-xl overflow-hidden bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/15 transition-all">
+              ${createCurrencySelect('curr-item', defaultCurr)}
+              <input type="text" inputmode="decimal" placeholder="0"
+                     class="fee-input val-item w-full px-3 py-2 text-right text-sm sm:text-base font-medium text-[#1C1C1E] outline-none min-w-0"
+                     oninput="sanitizeDecimalInput(this); calculateAll();">
+            </div>
+          </div>
+
+          <!-- 3. 服務費價格 -->
+          <div class="flex items-center justify-between gap-2">
+            <span class="w-24 sm:w-28 text-xs sm:text-sm font-medium text-[#1C1C1E] shrink-0">服務費</span>
+            <div class="flex flex-1 min-w-0 border border-[#D1D1D6] rounded-xl overflow-hidden bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/15 transition-all">
+              ${createCurrencySelect('curr-service', defaultCurr)}
+              <input type="text" inputmode="decimal" placeholder="0"
+                     class="fee-input val-service w-full px-3 py-2 text-right text-sm sm:text-base font-medium text-[#1C1C1E] outline-none min-w-0"
+                     oninput="sanitizeDecimalInput(this); calculateAll();">
+            </div>
+          </div>
+
+          <!-- 4. 運費價格 -->
+          <div class="flex items-center justify-between gap-2">
+            <span class="w-24 sm:w-28 text-xs sm:text-sm font-medium text-[#1C1C1E] shrink-0">運費</span>
+            <div class="flex flex-1 min-w-0 border border-[#D1D1D6] rounded-xl overflow-hidden bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/15 transition-all">
+              ${createCurrencySelect('curr-shipping', defaultCurr)}
+              <input type="text" inputmode="decimal" placeholder="0"
+                     class="fee-input val-shipping w-full px-3 py-2 text-right text-sm sm:text-base font-medium text-[#1C1C1E] outline-none min-w-0"
+                     oninput="sanitizeDecimalInput(this); calculateAll();">
+            </div>
+          </div>
+
+          <!-- 5. 刷卡手續費價格 -->
+          <div class="flex items-start justify-between gap-2">
+            <span class="w-24 sm:w-28 text-xs sm:text-sm font-medium text-[#1C1C1E] shrink-0 pt-2.5">刷卡手續費</span>
+            <div class="flex-1 min-w-0 flex flex-col gap-1.5">
+              <div class="flex border border-[#D1D1D6] rounded-xl overflow-hidden bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/15 transition-all">
+                ${createCurrencySelect('curr-cc', 'TWD')}
+                <input type="text" inputmode="decimal" placeholder="0"
+                       class="fee-input val-cc w-full px-3 py-2 text-right text-sm sm:text-base font-medium text-[#1C1C1E] outline-none min-w-0"
+                       oninput="sanitizeDecimalInput(this); manualCCInput(this);">
+              </div>
+              <!-- 自動計算與備註列 -->
+              <div class="flex flex-wrap items-center justify-end gap-1.5 text-[11px] text-[#8E8E93]">
+                <label class="inline-flex items-center gap-1 text-[#1C1C1E] font-medium cursor-pointer">
+                  <input type="checkbox" class="cc-auto-check rounded text-[#007AFF] focus:ring-0 cursor-pointer" checked onchange="calculateAll()">
+                  <span>自動算</span>
+                </label>
+                <div class="inline-flex items-center">
+                  <input type="text" inputmode="decimal" value="1.5"
+                         class="cc-rate-input w-11 px-1 py-0.5 text-right text-xs font-bold text-[#007AFF] border border-[#D1D1D6] rounded-md outline-none focus:border-[#007AFF]"
+                         oninput="sanitizeDecimalInput(this); calculateAll();">
+                  <span class="ml-0.5 font-semibold text-[#1C1C1E]">%</span>
+                </div>
+                <span class="bg-[#F2F2F7] text-[#8E8E93] text-[10px] px-1.5 py-0.5 rounded">上述3項換台幣相加</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. 其他費用（稅務） -->
+          <div class="flex items-center justify-between gap-2">
+            <span class="w-24 sm:w-28 text-xs sm:text-sm font-medium text-[#1C1C1E] shrink-0 leading-tight">其他費用（稅務）</span>
+            <div class="flex flex-1 min-w-0 border border-[#D1D1D6] rounded-xl overflow-hidden bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/15 transition-all">
+              ${createCurrencySelect('curr-other', defaultCurr)}
+              <input type="text" inputmode="decimal" placeholder="0"
+                     class="fee-input val-other w-full px-3 py-2 text-right text-sm sm:text-base font-medium text-[#1C1C1E] outline-none min-w-0"
+                     oninput="sanitizeDecimalInput(this); calculateAll();">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. 台幣總額 (TWD) -->
+        <div class="mt-4 pt-3 border-t border-dashed border-[#E5E5EA] flex items-baseline justify-between">
+          <span class="text-xs sm:text-sm font-semibold text-[#8E8E93]">台幣總額 (TWD)</span>
+          <span class="total-amount text-xl sm:text-2xl font-extrabold text-[#007AFF] tracking-tight">NT$ 0</span>
+        </div>
+      `;
+
+      container.appendChild(card);
+      calculateAll();
+    }
+
+    /**
+     * 切換「其他 (自訂)」平台時顯示/隱藏文字框
+     */
+    function handlePlatformChange(selectEl) {
+      const customInput = selectEl.nextElementSibling;
+      if (selectEl.value === '其他') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+      } else {
+        customInput.classList.add('hidden');
+      }
+    }
+
+    /**
+     * 移除指定平台卡片
+     */
+    function removeCard(cardId) {
+      const container = document.getElementById('cards-container');
+      if (container.children.length <= 1) {
+        showToast('至少需要保留一個比較平台喔！');
+        return;
+      }
+      const card = document.getElementById(cardId);
+      if (card) {
+        card.remove();
+        calculateAll();
+      }
+    }
+
+    /**
+     * 手動輸入刷卡手續費時，自動取消勾選「自動算」；清空時則恢復勾選
+     */
+    function manualCCInput(inputEl) {
+      const card = inputEl.closest('.card');
+      const autoCheck = card.querySelector('.cc-auto-check');
+      autoCheck.checked = (inputEl.value === '');
+      calculateAll();
+    }
+
+    /**
+     * 取得指定幣別對台幣的匯率
+     */
+    function getExchangeRate(currency) {
+      if (currency === 'TWD') return 1;
+      const rateInput = document.getElementById(`rate-${currency}`);
+      return parseFloat(rateInput.value) || 0;
+    }
+
+    /**
+     * 重新計算所有卡片的金額與標示最划算平台
+     */
+    function calculateAll() {
+      const cards = document.querySelectorAll('.card');
+      let minTotal = Infinity;
+      const results = [];
+
+      cards.forEach(card => {
+        const getTwdValue = (valClass, currClass) => {
+          const val = parseFloat(card.querySelector(`.${valClass}`).value) || 0;
+          const curr = card.querySelector(`.${currClass}`).value;
+          return val * getExchangeRate(curr);
+        };
+
+        // 前 3 項換算台幣並加總
+        const itemTwd = getTwdValue('val-item', 'curr-item');
+        const serviceTwd = getTwdValue('val-service', 'curr-service');
+        const shippingTwd = getTwdValue('val-shipping', 'curr-shipping');
+        const firstThreeSumTwd = itemTwd + serviceTwd + shippingTwd;
+
+        // 第 6 項：其他費用（稅務）
+        const otherTwd = getTwdValue('val-other', 'curr-other');
+
+        // 第 5 項：刷卡手續費（自動計算以上述3項台幣加總為基準）
+        const ccAuto = card.querySelector('.cc-auto-check').checked;
+        const ccRate = parseFloat(card.querySelector('.cc-rate-input').value) || 0;
+        const ccInput = card.querySelector('.val-cc');
+        const ccCurrSelect = card.querySelector('.curr-cc');
+
+        let ccTwd = 0;
+        if (ccAuto) {
+          ccCurrSelect.value = 'TWD';
+          ccTwd = firstThreeSumTwd * (ccRate / 100);
+          ccInput.value = firstThreeSumTwd > 0 ? (Math.round(ccTwd * 10) / 10).toString() : '';
+        } else {
+          ccTwd = getTwdValue('val-cc', 'curr-cc');
+        }
+
+        // 總額加總（四捨五入至整數）
+        const finalTotal = Math.round(firstThreeSumTwd + ccTwd + otherTwd);
+        card.querySelector('.total-amount').textContent = `NT$ ${finalTotal.toLocaleString()}`;
+
+        results.push({ card, finalTotal });
+        if (finalTotal > 0 && finalTotal < minTotal) {
+          minTotal = finalTotal;
+        }
+      });
+
+      // 標示最划算卡片（至少有兩張卡片大於 0 元時顯示）
+      const activeCount = results.filter(r => r.finalTotal > 0).length;
+      results.forEach(({ card, finalTotal }) => {
+        const badge = card.querySelector('.cheapest-badge');
+        const totalEl = card.querySelector('.total-amount');
+        if (finalTotal > 0 && finalTotal === minTotal && activeCount > 1) {
+          card.classList.remove('border-transparent');
+          card.classList.add('border-[#34C759]', 'shadow-md', 'shadow-[#34C759]/15');
+          badge.classList.remove('hidden');
+          totalEl.classList.remove('text-[#007AFF]');
+          totalEl.classList.add('text-[#34C759]');
+        } else {
+          card.classList.add('border-transparent');
+          card.classList.remove('border-[#34C759]', 'shadow-md', 'shadow-[#34C759]/15');
+          badge.classList.add('hidden');
+          totalEl.classList.add('text-[#007AFF]');
+          totalEl.classList.remove('text-[#34C759]');
+        }
+      });
+    }
+
+    // 網頁載入完成後預設建立兩張比較卡片
+    window.addEventListener('DOMContentLoaded', () => {
+      addCard('淘寶', 'CNY');
+      addCard('拼多多', 'CNY');
+    });
+  </script>
+</body>
+</html>
