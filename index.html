@@ -61,7 +61,10 @@
           <span>💱</span>
           <span>匯率設定 (兌台幣 TWD)</span>
         </h2>
-        <span class="text-[11px] sm:text-xs text-[#8E8E93]">即時匯率 僅供參考</span>
+        <button type="button" onclick="fetchLiveRates()" id="sync-rate-btn"
+                class="text-xs text-[#007AFF] hover:underline font-semibold bg-[#007AFF]/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer">
+          同步即時匯率
+        </button>
       </div>
 
       <!-- 手機 2x2 網格、電腦 4 欄 -->
@@ -133,7 +136,7 @@
       '日本樂天 / Mercari',
       '其他',
     ];
-    const CURRENCIES = ['TWD', 'CNY', 'USD','JPY', 'KRW'];
+    const CURRENCIES = ['TWD', 'CNY', 'USD', 'JPY', 'KRW'];
 
     let cardCounter = 0;
     let toastTimeout = null;
@@ -341,6 +344,46 @@
       if (currency === 'TWD') return 1;
       const rateInput = document.getElementById(`rate-${currency}`);
       return parseFloat(rateInput.value) || 0;
+    }
+
+    /**
+     * 從免費公開 API 取得最新即時匯率並更新畫面
+     */
+    async function fetchLiveRates() {
+      const btn = document.getElementById('sync-rate-btn');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ 更新中...';
+      btn.disabled = true;
+
+      try {
+        // 使用公開且穩定的 Frankfurter 匯率 API (以 USD 為基底)
+        const response = await fetch('https://api.frankfurter.app/latest?from=USD&to=TWD,CNY,JPY,KRW');
+        if (!response.ok) throw new Error('網路請求失敗');
+        const data = await response.json();
+
+        // 換算成對 TWD 的匯率
+        const rates = data.rates;
+        const usdToTwd = rates.TWD; // 1 USD = 多少 TWD
+        const cnyToTwd = usdToTwd / rates.CNY;
+        const jpyToTwd = usdToTwd / rates.JPY;
+        const krwToTwd = usdToTwd / rates.KRW;
+
+        // 填入對應的 input 框 (保留適當小數位數)
+        document.getElementById('rate-USD').value = usdToTwd.toFixed(2);
+        document.getElementById('rate-CNY').value = cnyToTwd.toFixed(2);
+        document.getElementById('rate-JPY').value = jpyToTwd.toFixed(4);
+        document.getElementById('rate-KRW').value = krwToTwd.toFixed(4);
+
+        // 重新計算所有金額
+        calculateAll();
+        showToast('即時匯率更新成功！');
+      } catch (error) {
+        console.error(error);
+        showToast('更新失敗，請檢查網路連線');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
     }
 
     /**
