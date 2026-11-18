@@ -253,19 +253,21 @@
                        class="fee-input val-cc w-full px-2.5 py-2 text-right text-sm sm:text-base font-medium text-[#1C1C1E] outline-none min-w-0"
                        oninput="sanitizeDecimalInput(this); manualCCInput(this);">
               </div>
-              <!-- 自動計算與備註列 -->
-              <div class="flex flex-wrap items-center justify-end gap-1 text-[11px] text-[#8E8E93]">
-                <label class="inline-flex items-center gap-1 text-[#1C1C1E] font-medium cursor-pointer">
-                  <input type="checkbox" class="cc-auto-check rounded text-[#007AFF] focus:ring-0 cursor-pointer" checked onchange="calculateAll()">
-                  <span>自動算</span>
-                </label>
-                <div class="inline-flex items-center">
-                  <input type="text" inputmode="decimal" value="1.5"
-                         class="cc-rate-input w-10 px-1 py-0.5 text-right text-xs font-bold text-[#007AFF] border border-[#D1D1D6] rounded-md outline-none focus:border-[#007AFF]"
-                         oninput="sanitizeDecimalInput(this); calculateAll();">
-                  <span class="ml-0.5 font-semibold text-[#1C1C1E]">%</span>
+              <!-- 前3項相加在左，自動算按鈕在右 -->
+              <div class="flex items-center justify-between text-[11px] text-[#8E8E93]">
+                <span class="bg-[#F2F2F7] text-[#8E8E93] text-[10px] px-1 py-0.5 rounded">前3項相加</span>
+                <div class="flex items-center gap-1.5">
+                  <label class="inline-flex items-center gap-1 text-[#1C1C1E] font-medium cursor-pointer">
+                    <input type="checkbox" class="cc-auto-check rounded text-[#007AFF] focus:ring-0 cursor-pointer" checked onchange="calculateAll()">
+                    <span>自動算</span>
+                  </label>
+                  <div class="inline-flex items-center">
+                    <input type="text" inputmode="decimal" value="1.5"
+                           class="cc-rate-input w-10 px-1 py-0.5 text-right text-xs font-bold text-[#007AFF] border border-[#D1D1D6] rounded-md outline-none focus:border-[#007AFF]"
+                           oninput="sanitizeDecimalInput(this); calculateAll();">
+                    <span class="ml-0.5 font-semibold text-[#1C1C1E]">%</span>
+                  </div>
                 </div>
-                <span class="bg-[#F2F2F7] text-[#8E8E93] text-[10px] px-1 py-0.5 rounded">前3項台幣相加</span>
               </div>
             </div>
             <div class="sub-twd-preview w-24 sm:w-28 text-right text-xs sm:text-sm font-semibold text-[#8E8E93] shrink-0 pt-2.5">
@@ -389,7 +391,7 @@
 
         const previews = card.querySelectorAll('.sub-twd-preview');
 
-        // 各項換算台幣（保留完整小數以供精確加總）
+        // 各項換算台幣
         const itemTwd = calcSubTwd('val-item', 'curr-item', previews[0]);
         const serviceTwd = calcSubTwd('val-service', 'curr-service', previews[1]);
         const shippingTwd = calcSubTwd('val-shipping', 'curr-shipping', previews[2]);
@@ -411,10 +413,9 @@
         } else {
           ccTwd = (parseFloat(ccInput.value) || 0) * getExchangeRate(ccCurrSelect.value);
         }
-        // 更新刷卡手續費右側的預覽（小數點第二位）
         previews[3].textContent = `≈ $${ccTwd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-        // 總額加總（完整小數加總後，最後才四捨五入至整數）
+        // 總額加總
         const finalTotal = Math.round(firstThreeSumTwd + ccTwd + otherTwd);
         card.querySelector('.total-amount').textContent = `NT$ ${finalTotal.toLocaleString()}`;
 
